@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MiMo Customer Support Engine — Dashboard</title>
+<style>
+:root {
+  --bg-primary: #0f1117;
+  --bg-secondary: #161822;
+  --bg-tertiary: #1c1f2e;
+  --bg-card: #1a1d2e;
+  --border: #2a2d3e;
+  --text-primary: #e4e6f0;
+  --text-secondary: #8b8fa3;
+  --text-muted: #5a5e72;
+  --accent: #6c5ce7;
+  --accent-light: #a29bfe;
+  --success: #00b894;
+  --warning: #fdcb6e;
+  --danger: #e17055;
+  --info: #74b9ff;
+  --glow: rgba(108, 92, 231, 0.15);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+
+.header { background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; }
+.header h1 { font-size: 20px; font-weight: 600; }
+.header h1 span { color: var(--accent-light); }
+.header .status { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+.header .status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--success); animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.tabs { display: flex; background: var(--bg-secondary); border-bottom: 1px solid var(--border); padding: 0 24px; overflow-x: auto; }
+.tab { padding: 12px 20px; font-size: 13px; font-weight: 500; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; white-space: nowrap; }
+.tab:hover { color: var(--text-primary); }
+.tab.active { color: var(--accent-light); border-bottom-color: var(--accent); }
+
+.content { padding: 24px; max-width: 1400px; margin: 0 auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+.stat-card .label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+.stat-card .value { font-size: 28px; font-weight: 700; }
+.stat-card .value.accent { color: var(--accent-light); }
+.stat-card .value.success { color: var(--success); }
+.stat-card .value.warning { color: var(--warning); }
+.stat-card .value.danger { color: var(--danger); }
+
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.card h3 { font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); }
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 12px; border-bottom: 1px solid rgba(42,45,62,0.5); color: var(--text-secondary); }
+tr:hover td { background: rgba(108,92,231,0.05); }
+
+.badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-low { background: rgba(0,184,148,0.15); color: var(--success); }
+.badge-medium { background: rgba(116,185,255,0.15); color: var(--info); }
+.badge-high { background: rgba(253,203,110,0.15); color: var(--warning); }
+.badge-critical { background: rgba(225,112,85,0.15); color: var(--danger); }
+.badge-open { background: rgba(116,185,255,0.15); color: var(--info); }
+.badge-resolved { background: rgba(0,184,148,0.15); color: var(--success); }
+.badge-processing { background: rgba(162,155,254,0.15); color: var(--accent-light); }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.form-group input, .form-group textarea, .form-group select {
+  width: 100%; padding: 10px 14px; background: var(--bg-tertiary); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-primary); font-size: 14px; font-family: inherit;
+}
+.form-group textarea { min-height: 100px; resize: vertical; }
+.form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+  outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--glow);
+}
+
+.btn { padding: 10px 24px; border-radius: 8px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-light); }
+
+.pipeline-viz { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 16px 0; }
+.pipeline-step { background: var(--bg-tertiary); border: 1px solid var(--border); border-radius: 8px; padding: 10px 16px; font-size: 12px; text-align: center; min-width: 100px; }
+.pipeline-step.active { border-color: var(--accent); background: var(--glow); }
+.pipeline-arrow { color: var(--text-muted); font-size: 18px; }
+
+.log-entry { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 12px; padding: 6px 12px; border-bottom: 1px solid rgba(42,45,62,0.3); color: var(--text-secondary); }
+.log-entry .timestamp { color: var(--text-muted); margin-right: 8px; }
+.log-entry .level-info { color: var(--info); }
+.log-entry .level-warn { color: var(--warning); }
+.log-entry .level-error { color: var(--danger); }
+
+.chart-placeholder { height: 200px; background: var(--bg-tertiary); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 14px; }
+
+.bar-chart { display: flex; align-items: flex-end; gap: 12px; height: 160px; padding: 16px 0; }
+.bar-item { display: flex; flex-direction: column; align-items: center; gap: 6px; flex: 1; }
+.bar { width: 100%; border-radius: 4px 4px 0 0; background: var(--accent); min-height: 4px; transition: height 0.5s; }
+.bar-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; }
+.bar-value { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+
+.ws-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); }
+.ws-status .dot { width: 6px; height: 6px; border-radius: 50%; }
+.ws-status .dot.connected { background: var(--success); }
+.ws-status .dot.disconnected { background: var(--danger); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🧠 <span>MiMo</span> Customer Support Engine</h1>
+  <div class="status">
+    <span class="dot"></span>
+    <span>7 Agents Active</span>
+    <span style="margin-left: 16px;" class="ws-status">
+      <span class="dot disconnected" id="wsDot"></span>
+      <span id="wsLabel">Connecting...</span>
+    </span>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" data-tab="tickets">🎫 Tickets</div>
+  <div class="tab" data-tab="knowledge">📚 Knowledge Base</div>
+  <div class="tab" data-tab="pipeline">⚡ Pipeline</div>
+  <div class="tab" data-tab="actions">🔧 Actions</div>
+  <div class="tab" data-tab="escalations">🚨 Escalations</div>
+  <div class="tab" data-tab="responses">💬 Responses</div>
+  <div class="tab" data-tab="analytics">📊 Analytics</div>
+  <div class="tab" data-tab="system">⚙️ System</div>
+</div>
+
+<div class="content">
+
+  <!-- TICKETS TAB -->
+  <div class="tab-panel active" id="tab-tickets">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Total Tickets</div><div class="value accent" id="statTotal">0</div></div>
+      <div class="stat-card"><div class="label">Open</div><div class="value warning" id="statOpen">0</div></div>
+      <div class="stat-card"><div class="label">Resolved</div><div class="value success" id="statResolved">0</div></div>
+      <div class="stat-card"><div class="label">Avg Sentiment</div><div class="value" id="statSentiment">0.0</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Submit New Ticket</h3>
+      <form id="ticketForm" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group"><label>Customer ID</label><input type="text" id="customerId" required></div>
+        <div class="form-group"><label>Email</label><input type="email" id="customerEmail"></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Subject</label><input type="text" id="ticketSubject" required></div>
+        <div class="form-group" style="grid-column:1/-1"><label>Body</label><textarea id="ticketBody" required></textarea></div>
+        <div class="form-group"><label>Category</label>
+          <select id="ticketCategory"><option>general</option><option>billing</option><option>technical</option><option>account</option><option>shipping</option><option>product</option><option>security</option><option>complaint</option></select>
+        </div>
+        <div class="form-group"><label>Urgency</label>
+          <select id="ticketUrgency"><option>low</option><option selected>medium</option><option>high</option><option>critical</option></select>
+        </div>
+        <div style="grid-column:1/-1"><button type="submit" class="btn btn-primary">Submit & Process</button></div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Recent Tickets</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Subject</th><th>Category</th><th>Urgency</th><th>Status</th><th>Created</th></tr></thead>
+        <tbody id="ticketsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- KNOWLEDGE BASE TAB -->
+  <div class="tab-panel" id="tab-knowledge">
+    <div class="card">
+      <h3>Add Knowledge Base Entry</h3>
+      <form id="kbForm">
+        <div class="form-group"><label>Title</label><input type="text" id="kbTitle" required></div>
+        <div class="form-group"><label>Content</label><textarea id="kbContent" required></textarea></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+          <div class="form-group"><label>Category</label><input type="text" id="kbCategory" value="general"></div>
+          <div class="form-group"><label>Tags</label><input type="text" id="kbTags"></div>
+          <div class="form-group"><label>Relevance</label><input type="number" id="kbRelevance" value="1.0" step="0.1" min="0" max="10"></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Add Entry</button>
+      </form>
+    </div>
+    <div class="card">
+      <h3>Knowledge Base Entries</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Title</th><th>Category</th><th>Relevance</th><th>Usage</th></tr></thead>
+        <tbody id="kbTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PIPELINE TAB -->
+  <div class="tab-panel" id="tab-pipeline">
+    <div class="card">
+      <h3>Agent Pipeline Visualization</h3>
+      <div class="pipeline-viz">
+        <div class="pipeline-step active">🔍 Triage</div><span class="pipeline-arrow">→</span>
+        <div class="pipeline-step active">📖 Search</div><span class="pipeline-arrow">→</span>
+        <div class="pipeline-step active">🧠 Reasoning</div><span class="pipeline-arrow">→</span>
+        <div class="pipeline-step active">⚡ Action</div><span class="pipeline-arrow">→</span>
+        <div class="pipeline-step active">🚨 Escalation</div><span class="pipeline-arrow">→</span>
+        <div class="pipeline-step active">💬 Response</div><span class="pipeline-arrow">→</span>
+        <div class="pipeline-step active">📝 Learn</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Pipeline Activity Log</h3>
+      <div id="pipelineLog" style="max-height:400px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ACTIONS TAB -->
+  <div class="tab-panel" id="tab-actions">
+    <div class="card">
+      <h3>Executed Actions</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Ticket</th><th>Type</th><th>Status</th><th>Agent</th><th>Created</th></tr></thead>
+        <tbody id="actionsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ESCALATIONS TAB -->
+  <div class="tab-panel" id="tab-escalations">
+    <div class="card">
+      <h3>Escalations</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Ticket</th><th>From</th><th>To Team</th><th>Reason</th><th>Urgency</th><th>Status</th></tr></thead>
+        <tbody id="escalationsTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RESPONSES TAB -->
+  <div class="tab-panel" id="tab-responses">
+    <div class="card">
+      <h3>Generated Responses</h3>
+      <table>
+        <thead><tr><th>ID</th><th>Ticket</th><th>Agent</th><th>Confidence</th><th>Preview</th><th>Created</th></tr></thead>
+        <tbody id="responsesTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ANALYTICS TAB -->
+  <div class="tab-panel" id="tab-analytics">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Total Tickets</div><div class="value accent" id="anaTotal">0</div></div>
+      <div class="stat-card"><div class="label">Escalations</div><div class="value danger" id="anaEscalations">0</div></div>
+      <div class="stat-card"><div class="label">Actions Executed</div><div class="value success" id="anaActions">0</div></div>
+      <div class="stat-card"><div class="label">Avg Sentiment</div><div class="value" id="anaSentiment">0</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="card">
+        <h3>Tickets by Category</h3>
+        <div class="bar-chart" id="categoryChart"></div>
+      </div>
+      <div class="card">
+        <h3>Tickets by Urgency</h3>
+        <div class="bar-chart" id="urgencyChart"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SYSTEM TAB -->
+  <div class="tab-panel" id="tab-system">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Kernel Status</div><div class="value success" id="sysStatus">—</div></div>
+      <div class="stat-card"><div class="label">Registered Agents</div><div class="value accent" id="sysAgents">0</div></div>
+      <div class="stat-card"><div class="label">Tickets Processed</div><div class="value" id="sysProcessed">0</div></div>
+      <div class="stat-card"><div class="label">Pipeline Errors</div><div class="value danger" id="sysErrors">0</div></div>
+    </div>
+    <div class="card">
+      <h3>Registered Agents</h3>
+      <div id="agentList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;"></div>
+    </div>
+    <div class="card">
+      <h3>System Metrics</h3>
+      <div id="metricsLog" style="max-height:300px;overflow-y:auto;"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const API = '/api';
+let ws;
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    refreshTab(tab.dataset.tab);
+  });
+});
+
+// API helper
+async function api(path, opts = {}) {
+  const res = await fetch(API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts,
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  return res.json();
+}
+
+// WebSocket
+function connectWS() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/dashboard`);
+  ws.onopen = () => {
+    document.getElementById('wsDot').className = 'dot connected';
+    document.getElementById('wsLabel').textContent = 'Live';
+  };
+  ws.onclose = () => {
+    document.getElementById('wsDot').className = 'dot disconnected';
+    document.getElementById('wsLabel').textContent = 'Reconnecting...';
+    setTimeout(connectWS, 3000);
+  };
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    if (msg.type === 'heartbeat') return;
+    addPipelineLog(msg);
+  };
+}
+
+function addPipelineLog(msg) {
+  const el = document.getElementById('pipelineLog');
+  const now = new Date().toLocaleTimeString();
+  el.innerHTML = `<div class="log-entry"><span class="timestamp">${now}</span><span class="level-info">[${msg.type}]</span> ${JSON.stringify(msg.data || msg)}</div>` + el.innerHTML;
+}
+
+// Ticket form
+document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    customer_id: document.getElementById('customerId').value,
+    customer_email: document.getElementById('customerEmail').value,
+    subject: document.getElementById('ticketSubject').value,
+    body: document.getElementById('ticketBody').value,
+    category: document.getElementById('ticketCategory').value,
+    urgency: document.getElementById('ticketUrgency').value,
+  };
+  const result = await api('/tickets', { method: 'POST', body });
+  addPipelineLog({ type: 'ticket_submitted', data: result });
+  document.getElementById('ticketForm').reset();
+  refreshTab('tickets');
+});
+
+// KB form
+document.getElementById('kbForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const body = {
+    title: document.getElementById('kbTitle').value,
+    content: document.getElementById('kbContent').value,
+    category: document.getElementById('kbCategory').value,
+    tags: document.getElementById('kbTags').value,
+    relevance_score: parseFloat(document.getElementById('kbRelevance').value),
+  };
+  await api('/knowledge-base', { method: 'POST', body });
+  document.getElementById('kbForm').reset();
+  refreshTab('knowledge');
+});
+
+// Render helpers
+function badge(value, type) {
+  return `<span class="badge badge-${value || type}">${value || type}</span>`;
+}
+
+function truncate(s, len = 80) {
+  if (!s) return '';
+  return s.length > len ? s.substring(0, len) + '…' : s;
+}
+
+// Refresh tabs
+async function refreshTab(tab) {
+  if (tab === 'tickets') {
+    const [analytics, tickets] = [await api('/analytics'), await api('/tickets')];
+    document.getElementById('statTotal').textContent = analytics.total_tickets;
+    document.getElementById('statOpen').textContent = analytics.open_tickets;
+    document.getElementById('statResolved').textContent = analytics.resolved_tickets;
+    document.getElementById('statSentiment').textContent = analytics.avg_sentiment;
+    const tbody = document.getElementById('ticketsTable');
+    tbody.innerHTML = tickets.map(t => `<tr>
+      <td>${t.id}</td><td>${truncate(t.subject, 40)}</td>
+      <td>${badge(t.category)}</td><td>${badge(t.urgency)}</td>
+      <td>${badge(t.status)}</td><td>${new Date(t.created_at).toLocaleString()}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No tickets yet</td></tr>';
+  }
+  if (tab === 'knowledge') {
+    const entries = await api('/knowledge-base');
+    document.getElementById('kbTable').innerHTML = entries.map(e => `<tr>
+      <td>${e.id}</td><td>${truncate(e.title, 50)}</td><td>${e.category}</td>
+      <td>${e.relevance_score}</td><td>${e.usage_count}</td>
+    </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">No entries</td></tr>';
+  }
+  if (tab === 'actions') {
+    const actions = await api('/actions');
+    document.getElementById('actionsTable').innerHTML = actions.map(a => `<tr>
+      <td>${a.id}</td><td>${a.ticket_id}</td><td>${a.action_type}</td>
+      <td>${badge(a.status)}</td><td>${a.executed_by}</td><td>${new Date(a.created_at).toLocaleString()}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No actions</td></tr>';
+  }
+  if (tab === 'escalations') {
+    const escs = await api('/escalations');
+    document.getElementById('escalationsTable').innerHTML = escs.map(e => `<tr>
+      <td>${e.id}</td><td>${e.ticket_id}</td><td>${e.from_agent}</td><td>${e.to_team}</td>
+      <td>${truncate(e.reason, 60)}</td><td>${badge(e.urgency)}</td><td>${badge(e.status)}</td>
+    </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">No escalations</td></tr>';
+  }
+  if (tab === 'responses') {
+    const resps = await api('/responses');
+    document.getElementById('responsesTable').innerHTML = resps.map(r => `<tr>
+      <td>${r.id}</td><td>${r.ticket_id}</td><td>${r.agent_name}</td>
+      <td>${(r.confidence * 100).toFixed(0)}%</td><td>${truncate(r.response_text, 60)}</td>
+      <td>${new Date(r.created_at).toLocaleString()}</td>
+    </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">No responses</td></tr>';
+  }
+  if (tab === 'analytics') {
+    const a = await api('/analytics');
+    document.getElementById('anaTotal').textContent = a.total_tickets;
+    document.getElementById('anaEscalations').textContent = a.escalations;
+    document.getElementById('anaActions').textContent = a.actions_executed;
+    document.getElementById('anaSentiment').textContent = a.avg_sentiment;
+    renderBarChart('categoryChart', a.by_category);
+    renderBarChart('urgencyChart', a.by_urgency);
+  }
+  if (tab === 'system') {
+    const stats = await api('/system/stats');
+    document.getElementById('sysStatus').textContent = stats.running ? 'Running' : 'Stopped';
+    document.getElementById('sysAgents').textContent = stats.registered_agents?.length || 0;
+    document.getElementById('sysProcessed').textContent = stats.tickets_processed;
+    document.getElementById('sysErrors').textContent = stats.errors;
+    const agentList = document.getElementById('agentList');
+    agentList.innerHTML = (stats.registered_agents || []).map(a =>
+      `<div class="pipeline-step active" style="min-width:120px">${a}</div>`
+    ).join('');
+    const metrics = await api('/metrics?limit=20');
+    document.getElementById('metricsLog').innerHTML = metrics.map(m =>
+      `<div class="log-entry"><span class="timestamp">${new Date(m.recorded_at).toLocaleTimeString()}</span>[${m.metric_name}] = ${m.metric_value} (${m.agent_name || 'system'})</div>`
+    ).join('') || '<div class="log-entry" style="color:var(--text-muted)">No metrics recorded yet</div>';
+  }
+}
+
+function renderBarChart(id, data) {
+  const el = document.getElementById(id);
+  if (!data || Object.keys(data).length === 0) {
+    el.innerHTML = '<div style="color:var(--text-muted);text-align:center;width:100%;padding:40px;">No data</div>';
+    return;
+  }
+  const max = Math.max(...Object.values(data), 1);
+  el.innerHTML = Object.entries(data).map(([k, v]) =>
+    `<div class="bar-item"><div class="bar-value">${v}</div><div class="bar" style="height:${(v/max)*120}px"></div><div class="bar-label">${k}</div></div>`
+  ).join('');
+}
+
+// Initial load
+connectWS();
+refreshTab('tickets');
+setInterval(() => {
+  const active = document.querySelector('.tab.active');
+  if (active) refreshTab(active.dataset.tab);
+}, 15000);
+</script>
+</body>
+</html>
