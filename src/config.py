@@ -9,7 +9,7 @@ DATA_DIR.mkdir(exist_ok=True)
 DB_PATH = DATA_DIR / "mimo_support.db"
 
 # MiMo LLM Configuration
-MIMO_API_ENDPOINT = os.getenv("MIMO_API_ENDPOINT", "http://43.153.206.68:20128/v1")
+MIMO_API_ENDPOINT = os.getenv("MIMO_API_ENDPOINT")
 MIMO_MODEL = os.getenv("MIMO_MODEL", "xmtp/mimo-v2.5-pro")
 MIMO_API_KEY = os.getenv("MIMO_API_KEY", "sk-hermes-mimo")
 
